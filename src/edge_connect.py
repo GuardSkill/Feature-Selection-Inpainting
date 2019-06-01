@@ -6,6 +6,7 @@ from .dataset import Dataset
 from .models import EdgeModel, InpaintingModel
 from .utils import Progbar, create_dir, stitch_images, imsave
 from .metrics import PSNR, EdgeAccuracy
+from libs.logger import Logger
 
 
 class EdgeConnect():
@@ -28,13 +29,16 @@ class EdgeConnect():
 
         self.psnr = PSNR(255.0).to(config.DEVICE)
         self.edgeacc = EdgeAccuracy(config.EDGE_THRESHOLD).to(config.DEVICE)
-
+        val_sample = int(float((self.config.EVAL_INTERVAL)))
         # test mode
         if self.config.MODE == 2:
-            self.test_dataset = Dataset(config, config.TEST_FLIST, config.TEST_EDGE_FLIST, config.TEST_MASK_FLIST, augment=False, training=False)
+            self.test_dataset = Dataset(config, config.TEST_FLIST, config.TEST_EDGE_FLIST, config.TEST_MASK_FLIST,
+                                        augment=False, training=False)
         else:
-            self.train_dataset = Dataset(config, config.TRAIN_FLIST, config.TRAIN_EDGE_FLIST, config.TRAIN_MASK_FLIST, augment=True, training=True)
-            self.val_dataset = Dataset(config, config.VAL_FLIST, config.VAL_EDGE_FLIST, config.VAL_MASK_FLIST, augment=False, training=True)
+            self.train_dataset = Dataset(config, config.TRAIN_FLIST, config.TRAIN_EDGE_FLIST, config.TRAIN_MASK_FLIST,
+                                         augment=True, training=True)
+            self.val_dataset = Dataset(config, config.VAL_FLIST, config.VAL_EDGE_FLIST, config.VAL_MASK_FLIST,
+                                       augment=False, training=True, sample_interval=val_sample)
             self.sample_iterator = self.val_dataset.create_iterator(config.SAMPLE_SIZE)
 
         self.samples_path = os.path.join(config.PATH, 'samples')
@@ -46,7 +50,10 @@ class EdgeConnect():
         if config.DEBUG is not None and config.DEBUG != 0:
             self.debug = True
 
-        self.log_file = os.path.join(config.PATH, 'log_' + model_name + '.dat')
+        # self.log_file = os.path.join(config.PATH, 'log_' + model_name + '.dat')
+        log_path = os.path.join(config.PATH, 'logs_' + model_name)
+        create_dir(log_path)
+        self.logger = Logger(log_path)
 
     def load(self):
         if self.config.MODEL == 1:
@@ -82,21 +89,25 @@ class EdgeConnect():
         epoch = 0
         keep_training = True
         model = self.config.MODEL
-        max_iteration = int(float((self.config.MAX_ITERS)))
-        total = len(self.train_dataset)
+        # max_iteration = int(float((self.config.MAX_ITERS)))
+        step_per_epoch = int(float((self.config.MAX_STEPS)))
+        max_epoches = int(float((self.config.MAX_EPOCHES)))
+        total = int(len(self.train_dataset))
 
         if total == 0:
             print('No training data was provided! Check \'TRAIN_FLIST\' value in the configuration file.')
             return
 
-        while(keep_training):
-            epoch += 1
+        print('\n\nThe number of Training data is %d' % total)
+
+        while (keep_training):
+
             print('\n\nTraining epoch: %d' % epoch)
 
-            progbar = Progbar(total, width=20, stateful_metrics=['epoch', 'iter'])
+            progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['iter'])
 
             for items in train_loader:
-                self.edge_model.train()
+                self.edge_model.train()  # set the model to train mode
                 self.inpaint_model.train()
 
                 images, images_gray, edges, masks = self.cuda(*items)
@@ -108,11 +119,13 @@ class EdgeConnect():
 
                     # metrics
                     precision, recall = self.edgeacc(edges * masks, outputs * masks)
-                    logs.append(('precision', precision.item()))
-                    logs.append(('recall', recall.item()))
+                    logs['precision'] = precision.item()
+                    logs['recall'] = recall.item()
 
                     # backward
                     self.edge_model.backward(gen_loss, dis_loss)
+                    if self.edge_model.iteration > step_per_epoch:
+                        self.edge_model.iteration = 0
                     iteration = self.edge_model.iteration
 
 
@@ -180,66 +193,66 @@ class EdgeConnect():
                     iteration = self.inpaint_model.iteration
 
 
-                if iteration >= max_iteration:
+                if epoch > max_epoches:
                     keep_training = False
                     break
+                # determine wether print the detail in training process
+                # progbar.add(len(images)
 
-                logs = [
-                    ("epoch", epoch),
-                    ("iter", iteration),
-                ] + logs
-
-                progbar.add(len(images), values=logs if self.config.VERBOSE else [x for x in logs if not x[0].startswith('l_')])
 
                 # log model at checkpoints
-                if self.config.LOG_INTERVAL and iteration % self.config.LOG_INTERVAL == 0:
-                    self.log(logs)
 
-                # sample model at checkpoints
-                if self.config.SAMPLE_INTERVAL and iteration % self.config.SAMPLE_INTERVAL == 0:
+                if iteration == 0:
+                    epoch += 1
+                    print('\n\nTraining epoch: %d' % epoch)
+                    progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['epoch', 'iter'])
                     self.sample()
-
-                # evaluate model at checkpoints
-                if self.config.EVAL_INTERVAL and iteration % self.config.EVAL_INTERVAL == 0:
-                    print('\nstart eval...\n')
-                    self.eval()
-
-                # save model at checkpoints
-                if self.config.SAVE_INTERVAL and iteration % self.config.SAVE_INTERVAL == 0:
+                    self.eval(epoch)
                     self.save()
+                    for tag, value in logs.items():
+                        self.logger.scalar_summary(tag, value, epoch)
+                else:
+                    logs['step'] = iteration
+                    progbar.add(1,
+                                values=logs.items() if self.config.VERBOSE else [x for x in logs.items() if
+                                                                                 not x[0].startswith('l_')])
 
         print('\nEnd training....')
 
-    def eval(self):
-        val_loader = DataLoader(
+    def eval(self,epoch):
+        self.val_loader = DataLoader(
             dataset=self.val_dataset,
             batch_size=self.config.BATCH_SIZE,
             drop_last=True,
-            shuffle=True
+            shuffle=False,
+            num_workers=4
         )
-
         model = self.config.MODEL
-        total = len(self.val_dataset)
+        total = int(len(self.val_dataset))
 
         self.edge_model.eval()
         self.inpaint_model.eval()
 
-        progbar = Progbar(total, width=20, stateful_metrics=['it'])
+        progbar = Progbar(total, width=30, stateful_metrics=['it'])
         iteration = 0
 
-        for items in val_loader:
+        for items in self.val_loader:
             iteration += 1
             images, images_gray, edges, masks = self.cuda(*items)
 
             # edge model
             if model == 1:
                 # eval
-                outputs, gen_loss, dis_loss, logs = self.edge_model.process(images_gray, edges, masks)
-
+                outputs, gen_loss, dis_loss, _ = self.edge_model.process(images_gray, edges, masks)
+                logs={}
+                logs['l_val_d1']=dis_loss.item()
+                logs['l_vak_g1']=gen_loss.item()
                 # metrics
                 precision, recall = self.edgeacc(edges * masks, outputs * masks)
-                logs.append(('precision', precision.item()))
-                logs.append(('recall', recall.item()))
+                logs['val_precision'] = precision.item()
+                logs['val_recall'] = recall.item()
+                for tag, value in logs.items():
+                    self.logger.scalar_summary(tag, value, epoch)
 
 
             # inpaint model
@@ -289,9 +302,8 @@ class EdgeConnect():
                 i_logs.append(('mae', mae.item()))
                 logs = e_logs + i_logs
 
-
-            logs = [("it", iteration), ] + logs
-            progbar.add(len(images), values=logs)
+            logs["it"] = iteration
+            progbar.add(len(images), values=logs.items())
 
     def test(self):
         self.edge_model.eval()
@@ -325,8 +337,8 @@ class EdgeConnect():
             elif model == 3:
                 outputs = self.edge_model(images_gray, edges, masks).detach()
                 outputs_merged = (outputs * masks) + (edges * (1 - masks)) / 2
-                outputs_merged=self.postprocess(outputs_merged)[0]
-                path = os.path.join(self.results_path+"/edge_inpainted", name)
+                outputs_merged = self.postprocess(outputs_merged)[0]
+                path = os.path.join(self.results_path + "/edge_inpainted", name)
                 print(index, name)
                 imsave(outputs_merged, path)
 
@@ -370,9 +382,9 @@ class EdgeConnect():
         # edge model
         if model == 1:
             iteration = self.edge_model.iteration
-            inputs = (images_gray * (1 - masks)) + masks
+            inputs = (images_gray * masks) + (1 - masks)
             outputs = self.edge_model(images_gray, edges, masks)
-            outputs_merged = (outputs * masks) + (edges * (1 - masks))
+            outputs_merged = (outputs * (1-masks)) + (edges * masks)
 
         # inpaint model
         elif model == 2:
@@ -403,9 +415,8 @@ class EdgeConnect():
             self.postprocess(edges),
             self.postprocess(outputs),
             self.postprocess(outputs_merged),
-            img_per_row = image_per_row
+            img_per_row=image_per_row
         )
-
 
         path = os.path.join(self.samples_path, self.model_name)
         name = os.path.join(path, str(iteration).zfill(5) + ".png")

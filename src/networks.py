@@ -92,7 +92,7 @@ class InpaintGenerator(BaseNetwork):
 class EdgeGeneratorUnet(BaseNetwork):
     def __init__(self, residual_blocks=6, use_spectral_norm=True, init_weights=True, input_channels=3,
                  upsampling_mode='nearest'):
-        super(EdgeGenerator, self).__init__()
+        super(EdgeGeneratorUnet, self).__init__()
         # nn.Conv2d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups, False)
         # torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True,
         #                 padding_mode='zeros')
@@ -303,7 +303,7 @@ class ResnetBlock(nn.Module):
 
 class PartialResnetBlock(nn.Module):
     def __init__(self, dim, dilation=1, use_spectral_norm=False):
-        super(ResnetBlock, self).__init__()
+        super(PartialResnetBlock, self).__init__()
         self.conv_block = nn.Sequential(
             PartialModule(in_ch=dim, out_ch=dim, kernel_sz=3, pad=1, dilation=dilation,
                           bn=True, multi_channel=False, return_mask=True, use_spectral_norm=True),

@@ -45,6 +45,8 @@ DEFAULT_CONFIG = {
     'INPUT_SIZE': 256,              # input image size for training 0 for original size
     'SIGMA': 2,                     # standard deviation of the Gaussian filter used in Canny edge detector (0: random, -1: no edge)
     'MAX_ITERS': 2e6,               # maximum number of iterations to train the model
+    'MAX_STEPS': 5000,
+    'MAX_EPOCHES': 40,
 
     'EDGE_THRESHOLD': 0.5,          # edge detection threshold
     'L1_LOSS_WEIGHT': 1,            # l1 loss weight

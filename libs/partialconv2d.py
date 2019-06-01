@@ -92,10 +92,10 @@ class PartialConv2d(nn.Conv2d):
 
 class PartialModule(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_sz, pad, stride=1, bn=False, bias=True, activ='leaky',
-                 use_spectral_norm=True):
+                 use_spectral_norm=True,multi_channel=True,return_mask=True, *args, **kwargs):
         super().__init__()
         self.conv = PartialConv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=kernel_sz, padding=pad,
-                                  stride=stride, bias=bias, multi_channel=False, return_mask=True)
+                                  stride=stride, bias=bias, multi_channel=multi_channel, return_mask=return_mask,*args, **kwargs)
 
         if use_spectral_norm:
             self.conv = nn.utils.spectral_norm(self.conv)

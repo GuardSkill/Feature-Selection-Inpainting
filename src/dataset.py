@@ -11,15 +11,15 @@ from scipy.misc import imread
 from skimage.feature import canny
 from skimage.color import rgb2gray, gray2rgb
 from .utils import create_mask
-
+import torch.utils.data.sampler
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, config, flist, edge_flist, mask_flist, augment=True, training=True):
+    def __init__(self, config, flist, edge_flist, mask_flist, augment=True, training=True,sample_interval=1):
         super(Dataset, self).__init__()
         self.augment = augment
         self.training = training
-        self.data = self.load_flist(flist)
-        self.edge_data = self.load_flist(edge_flist)
+        self.data = self.load_flist(flist)[0::sample_interval]
+        self.edge_data = self.load_flist(edge_flist)[0::sample_interval]
         self.mask_data = self.load_flist(mask_flist)
 
         self.input_size = config.INPUT_SIZE
