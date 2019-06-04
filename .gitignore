@@ -111,3 +111,11 @@ datasets
 *.iml
 
 \.idea/
+
+_windows/
+
+codestyles/
+
+inspection/
+
+tools/
