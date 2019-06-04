@@ -105,7 +105,8 @@ class EdgeModel(BaseModel):
         self.gen_optimizer.zero_grad()
         self.dis_optimizer.zero_grad()
 
-        # process outputs
+
+        # process outpus
         outputs = self(images, edges, masks)
         gen_loss = 0
         dis_loss = 0
@@ -148,9 +149,11 @@ class EdgeModel(BaseModel):
     def forward(self, images, edges, masks):
         # edges_masked = (edges * (1 - masks))
         # images_masked = (images * (1 - masks)) + masks
-        edges_masked = (edges * (masks))
-        images_masked = (images * (masks)) + masks
-        inputs = torch.cat((images_masked, edges_masked, masks), dim=1)
+        edges_masked = (edges * masks)
+        images_masked = (images * masks) +(1-masks)
+        masks = masks.repeat(1, 2, 1, 1)
+        # inputs = torch.cat((images_masked, edges_masked, masks), dim=1)
+        inputs = torch.cat((images_masked, edges_masked), dim=1)
         # outputs = self.generator(inputs)  # in: [grayscale(1) + edge(1) + mask(1)]
         outputs = self.generator(inputs,masks)
         outputs = self.output_align(inputs, outputs)

@@ -98,13 +98,13 @@ class EdgeConnect():
             print('No training data was provided! Check \'TRAIN_FLIST\' value in the configuration file.')
             return
 
-        print('\n\nThe number of Training data is %d' % total)
+        print('\nThe number of Training data is %d' % total)
 
+        print('\nTraining epoch: %d' % epoch)
+        progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['step'])
         while (keep_training):
 
-            print('\n\nTraining epoch: %d' % epoch)
 
-            progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['iter'])
 
             for items in train_loader:
                 self.edge_model.train()  # set the model to train mode
@@ -193,29 +193,24 @@ class EdgeConnect():
                     iteration = self.inpaint_model.iteration
 
 
-                if epoch > max_epoches:
-                    keep_training = False
-                    break
-                # determine wether print the detail in training process
-                # progbar.add(len(images)
-
-
-                # log model at checkpoints
-
                 if iteration == 0:
                     epoch += 1
-                    print('\n\nTraining epoch: %d' % epoch)
-                    progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['epoch', 'iter'])
                     self.sample()
                     self.eval(epoch)
                     self.save()
                     for tag, value in logs.items():
                         self.logger.scalar_summary(tag, value, epoch)
+                    if epoch >= max_epoches:
+                        keep_training = False
+                        break
+                    print('\n\nTraining epoch: %d' % epoch)
+                    progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['step'])
                 else:
                     logs['step'] = iteration
                     progbar.add(1,
                                 values=logs.items() if self.config.VERBOSE else [x for x in logs.items() if
                                                                                  not x[0].startswith('l_')])
+
 
         print('\nEnd training....')
 
@@ -233,7 +228,7 @@ class EdgeConnect():
         self.edge_model.eval()
         self.inpaint_model.eval()
 
-        progbar = Progbar(total, width=30, stateful_metrics=['it'])
+        progbar = Progbar(int(total/self.config.BATCH_SIZE), width=30, stateful_metrics=['step'])
         iteration = 0
 
         for items in self.val_loader:
@@ -302,8 +297,8 @@ class EdgeConnect():
                 i_logs.append(('mae', mae.item()))
                 logs = e_logs + i_logs
 
-            logs["it"] = iteration
-            progbar.add(len(images), values=logs.items())
+            logs["step"] = iteration
+            progbar.add(1, values=logs.items())
 
     def test(self):
         self.edge_model.eval()

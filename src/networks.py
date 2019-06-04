@@ -90,7 +90,7 @@ class InpaintGenerator(BaseNetwork):
 
 
 class EdgeGeneratorUnet(BaseNetwork):
-    def __init__(self, residual_blocks=6, use_spectral_norm=True, init_weights=True, input_channels=3,
+    def __init__(self, residual_blocks=4, use_spectral_norm=True, init_weights=True, input_channels=2,
                  upsampling_mode='nearest'):
         super(EdgeGeneratorUnet, self).__init__()
         # nn.Conv2d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups, False)
@@ -101,16 +101,16 @@ class EdgeGeneratorUnet(BaseNetwork):
         self.upsampling_mode = upsampling_mode
 
         self.enc_1 = PartialModule(in_ch=input_channels, out_ch=64, kernel_sz=7, pad=0,
-                                   multi_channel=True, return_mask=True, use_spectral_norm=True),
+                                   multi_channel=True, return_mask=True, use_spectral_norm=True)
         # I = I-6 256-6=250
         self.enc_2 = PartialModule(in_ch=64, out_ch=128, kernel_sz=6, pad=2, stride=2,
-                                   multi_channel=True, return_mask=True, use_spectral_norm=True),
+                                   multi_channel=True, return_mask=True, use_spectral_norm=True)
         # I = I/2  125
         self.enc_3 = PartialModule(in_ch=128, out_ch=256, kernel_sz=4, pad=1, stride=2,
-                                   multi_channel=True, return_mask=True, use_spectral_norm=True),
+                                   multi_channel=True, return_mask=True, use_spectral_norm=True)
         # I = I/2  62
         self.enc_4 = PartialModule(in_ch=256, out_ch=512, kernel_sz=4, pad=1, stride=2,
-                                   multi_channel=True, return_mask=True, use_spectral_norm=True),
+                                   multi_channel=True, return_mask=True, use_spectral_norm=True)
         # I = I/2  31
         # self.encoder = nn.Sequential(
         #     self.enc_1,
@@ -131,7 +131,7 @@ class EdgeGeneratorUnet(BaseNetwork):
                                    multi_channel=True, return_mask=True, use_spectral_norm=True)
         self.dec_2 = PartialModule(in_ch=128 + 64, out_ch=64, kernel_sz=3, pad=1, stride=1,
                                    multi_channel=True, return_mask=True, use_spectral_norm=True)
-        self.dec_1 = PartialModule(in_ch=64 + input_channels, out_ch=input_channels, kernel_sz=3, pad=1, stride=1,
+        self.dec_1 = PartialModule(in_ch=64 + input_channels, out_ch=1, kernel_sz=3, pad=1, stride=1,
                                    multi_channel=True, return_mask=True, use_spectral_norm=True)
 
     def forward(self, x, mask):
@@ -157,7 +157,7 @@ class EdgeGeneratorUnet(BaseNetwork):
 
         h_key = 'h_{:d}'.format(4)
         h, h_mask = h_dict[h_key], h_mask_dict[h_key]  # last output in encoder
-        h, h_mask = self.middle(h, h_mask)  # propagate the middle residual blocks
+        [h, h_mask] = self.middle([h, h_mask])  # propagate the middle residual blocks
 
         for i in range(4, 0, -1):  # from layer_size to 1
             enc_h_key = 'h_{:d}'.format(i - 1)
@@ -304,21 +304,21 @@ class ResnetBlock(nn.Module):
 class PartialResnetBlock(nn.Module):
     def __init__(self, dim, dilation=1, use_spectral_norm=False):
         super(PartialResnetBlock, self).__init__()
-        self.conv_block = nn.Sequential(
-            PartialModule(in_ch=dim, out_ch=dim, kernel_sz=3, pad=1, dilation=dilation,
-                          bn=True, multi_channel=False, return_mask=True, use_spectral_norm=True),
+        self.conv_block1 = PartialModule(in_ch=dim, out_ch=dim, kernel_sz=3, pad=int((3-1)*dilation/2), dilation=dilation,
+                          bn=True, multi_channel=True, return_mask=True, use_spectral_norm=True)
+        self.conv_block2 = PartialModule(in_ch=dim, out_ch=dim, kernel_sz=3, pad=int((3-1)*dilation/2), dilation=dilation,
+                          bn=True, multi_channel=True, return_mask=True, use_spectral_norm=True)
 
-            PartialModule(in_ch=dim, out_ch=dim, kernel_sz=3, pad=1, dilation=dilation,
-                          bn=True, multi_channel=False, return_mask=True, use_spectral_norm=True)
-        )
-
-    def forward(self, x,mask):
-        out = torch.mul(x, mask) + self.conv_block(x,mask)
+    def forward(self, comp):
+        [x, mask]=comp
+        h,h_mask=self.conv_block1(x, mask)
+        h,h_mask=self.conv_block2(h,h_mask)
+        out = torch.mul(x, mask) + h
 
         # Remove ReLU at the end of the residual block
         # http://torch.ch/blog/2016/02/04/resnets.html
 
-        return out
+        return [out,h_mask]
 
 
 def spectral_norm(module, mode=True):
