@@ -7,8 +7,8 @@ class Config(dict):
         with open(config_path, 'r') as f:
             super(Config, self).__setattr__('_yaml', f.read())
             super(Config, self).__setattr__('_dict',yaml.load(self._yaml))
-            super(Config, self).__setattr__("_dict['PATH']'", os.path.dirname(config_path))
-
+            # super(Config, self).__setattr__("_dict['PATH']'", os.path.dirname(config_path))
+            self.PATH = os.path.dirname(config_path)
             # self._yaml = f.read()
             # self._dict = yaml.load(self._yaml)
             # self._dict['PATH'] = os.path.dirname(config_path)

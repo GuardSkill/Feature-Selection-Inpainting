@@ -32,7 +32,8 @@ class AdversarialLoss(nn.Module):
         if self.type == 'hinge':
             if is_disc:
                 if is_real:
-                    outputs = -outputs
+                    # outputs = -outputs
+                    outputs = self.criterion(1 -outputs).mean()
                 return self.criterion(1 + outputs).mean()
             else:
                 return (-outputs).mean()

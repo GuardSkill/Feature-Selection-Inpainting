@@ -1,7 +1,7 @@
 from src.config import Config
 from src.utils import create_dir
 import numpy as np
-
+import os
 # do your thing with the hyper-parameters
 from src.edge_connect import EdgeConnect
 
@@ -18,14 +18,17 @@ def randomTune(config):
     experiments = 50
     for i in range(experiments):
         # sample from a Uniform distribution on a log-scale
-        config.LR = 10 ** np.random.uniform(-2, -5)  # Sample learning rate candidates in the range (0.01 to 0.00001)
-        config.D2G_LR = 10 ** np.random.uniform(-1, -3)  # Sample regularization candidates in the range (0.001 to 0.1)
+        config.LR = 10 ** np.random.uniform(-3, -5)  # Sample learning rate candidates in the range (0.0001 to 0.001)
+        # config.LR=0.0001
+        config.D2G_LR = 10 ** np.random.uniform(-2, -4)  # Sample regularization candidates in the range (0.001 to 0.01)
         config.PATH = './checkpoints/places2_tune_%d_%f%f_' % (i, config.LR, config.D2G_LR)
         # logdir= config.PATH+('/log_%s_%s' % (config.LR , config.D2G_LR))
         create_dir(config.PATH)
 
         model = EdgeConnect(config)
         # config.print()
-        print('\nEx ;%d learning_rate:%f  D_Learning_rate: %f:\n' % (i, config.LR, config.D2G_LR))
+        print('\nEx %d: learning_rate:%f  D_Learning_rate: %f:' % (i, config.LR, config.D2G_LR))
 
         model.train()
+
+    os._exit(0)
