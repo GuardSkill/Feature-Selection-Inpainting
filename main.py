@@ -38,7 +38,7 @@ def main(mode=None):
     random.seed(config.SEED)
 
     # tune parameters
-    # randomTune(config)
+    randomTune(config)
 
     # build the model and initialize
     model = EdgeConnect(config)

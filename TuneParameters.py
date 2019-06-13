@@ -21,7 +21,7 @@ def randomTune(config):
         config.LR = 10 ** np.random.uniform(-3, -5)  # Sample learning rate candidates in the range (0.0001 to 0.001)
         # config.LR=0.0001
         config.D2G_LR = 10 ** np.random.uniform(-2, -4)  # Sample regularization candidates in the range (0.001 to 0.01)
-        config.PATH = './checkpoints/places2_tune_%d_%f%f_' % (i, config.LR, config.D2G_LR)
+        # config.PATH = './checkpoints/places2_tune_%d_%f%f_' % (i, config.LR, config.D2G_LR)
         # logdir= config.PATH+('/log_%s_%s' % (config.LR , config.D2G_LR))
         create_dir(config.PATH)
 

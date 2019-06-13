@@ -66,16 +66,16 @@ class EdgeConnect():
             self.edge_model.load()
             self.inpaint_model.load()
 
-    def save(self):
+    def save(self,epoch):
         if self.config.MODEL == 1:
-            self.edge_model.save()
+            self.edge_model.save(epoch)
 
         elif self.config.MODEL == 2 or self.config.MODEL == 3:
-            self.inpaint_model.save()
+            self.inpaint_model.save(epoch)
 
         else:
-            self.edge_model.save()
-            self.inpaint_model.save()
+            self.edge_model.save(epoch)
+            self.inpaint_model.save(epoch)
 
     def train(self):
         train_loader = DataLoader(
@@ -151,13 +151,13 @@ class EdgeConnect():
                 elif model == 3:
                     # train
                     if True or np.random.binomial(1, 0.5) > 0:
-                        outputs = self.edge_model(images_gray, edges, masks)
-                        outputs = (outputs * (1 - masks)) + (images * (masks))
+                        edge_outputs = self.edge_model(images_gray, edges, masks).detach()
+                        edge_outputs = (edge_outputs * (1 - masks)) + (edges * (masks))
                     else:
-                        outputs = edges
+                        edge_outputs = edges
 
-                    outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, outputs.detach(), masks)
-                    outputs_merged = (outputs * masks) + (images * (1 - masks))
+                    outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, edge_outputs.detach(), masks)
+                    outputs_merged = (outputs * (1 - masks)) + (images * (masks))
 
                     # metrics
                     psnr = self.psnr(self.postprocess(images), self.postprocess(outputs_merged))
@@ -209,7 +209,7 @@ class EdgeConnect():
                     epoch += 1
                     self.sample()
                     self.eval(epoch)
-                    self.save()
+                    self.save(epoch)
 
                     # log current epoch in tensorboard
                     for tag, value in logs_ave.items():
@@ -225,6 +225,8 @@ class EdgeConnect():
                     for tag, value in logs.items():
                         logs_ave[tag] = value
                     progbar = Progbar(step_per_epoch, width=30, stateful_metrics=['step'])
+                    self.inpaint_model.iteration+=1
+                    self.edge_model.iteration+=1
                     iteration+=1
                 logs['step'] = iteration
                 progbar.add(1,
