@@ -1,9 +1,9 @@
-## Contextual Inpianiting Method Guided by Sketch Reconstruction
+##   Contextual Inpianiting with Sketch Reconstruction and Feature Selection
  [BibTex](#citation)
 ### Introduction:
-We develop a new approach for image inpainting that does a better job of reproducing filled regions exhibiting fine details inspired by our understanding of how artists work: *lines first, color next*. We propose a two-stage adversarial model EdgeConnect that comprises of an edge generator followed by an image completion network. The edge generator hallucinates edges of the missing region (both regular and irregular) of the image, and the image completion network fills in the missing regions using hallucinated edges as a priori. Detailed description of the system can be found in our [paper](https://arxiv.org/abs/1901.00212).
+
 <p align='center'>  
-  <img src='https://user-images.githubusercontent.com/1743048/50673917-aac15080-0faf-11e9-9100-ef10864087c8.png' width='870'/>
+  <img src='' width=''/>
 </p>
 (a) Input images with missing regions. The missing regions are depicted in white. (b) Computed edge masks. Edges drawn in black are computed (for the available regions) using Canny edge detector; whereas edges shown in blue are hallucinated by the edge generator network. (c) Image inpainting results of the proposed approach.
 
@@ -104,8 +104,8 @@ To measure the Fréchet Inception Distance (FID score) run [`./scripts/fid_score
 python ./scripts/fid_score.py --path [path to validation, path to model output] --gpu [GPU id to use]
 ```
 
-### Alternative Edge Detection
-By default, we use Canny edge detector to extract edge information from the input images. If you want to train the model with an external edge detection ([Holistically-Nested Edge Detection](https://github.com/s9xie/hed) for example), you need to generate edge maps for the entire training/test sets as a pre-processing and their corresponding file lists using [`scripts/flist.py`](scripts/flist.py) as explained above. Please make sure the file names and directory structure match your training/test sets. You can switch to external edge detection by specifying `EDGE=2` in the config file.
+### Code Copyright
+Most of network code come from this github [repository](https://github.com/knazeri/edge-connect).
 
 ### Model Configuration
 
@@ -151,6 +151,8 @@ BATCH_SIZE             | 8     | input batch size
 INPUT_SIZE             | 256   | input image size for training. (0 for original size)
 SIGMA                  | 2     | standard deviation of the Gaussian filter used in Canny edge detector </br>(0: random, -1: no edge)
 MAX_ITERS              | 2e6   | maximum number of iterations to train the model
+MAX_STEPS:             | 5000  |maximum number of each epoch
+MAX_EPOCHES:           | 100   |maximum number of epoches  100
 EDGE_THRESHOLD         | 0.5   | edge detection threshold (0-1)
 L1_LOSS_WEIGHT         | 1     | l1 loss weight
 FM_LOSS_WEIGHT         | 10    | feature-matching loss weight
@@ -161,10 +163,9 @@ GAN_LOSS               | nsgan | **nsgan**: non-saturating gan, **lsgan**: least
 GAN_POOL_SIZE          | 0     | fake images pool size
 SAVE_INTERVAL          | 1000  | how many iterations to wait before saving model (0: never)
 EVAL_INTERVAL          | 0     | how many iterations to wait before evaluating the model (0: never)
-LOG_INTERVAL           | 10    | how many iterations to wait before logging training loss (0: never)
 SAMPLE_INTERVAL        | 1000  | how many iterations to wait before saving sample (0: never)
 SAMPLE_SIZE            | 12    | number of images to sample on each samling interval
-
+EVAL_INTERVAL          | 3     | How many INTERVAL sample while valuation  (0: never  36000 in places)
 ## License
 Licensed under a [Creative Commons Attribution-NonCommercial 4.0 International](https://creativecommons.org/licenses/by-nc/4.0/).
 
