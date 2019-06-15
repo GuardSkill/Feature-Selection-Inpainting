@@ -45,11 +45,11 @@ class BaseModel(nn.Module):
         torch.save({
             'iteration': self.iteration,
             'generator': self.generator.state_dict()
-        }, os.path.join(os.path.dirname(self.gen_weights_path),self.name+'_%d_gen.pth'%epoch))
+        }, os.path.join(os.path.dirname(self.gen_weights_path),self.name+'_%d_gen.pth'%(epoch-1)))
 
         torch.save({
             'discriminator': self.discriminator.state_dict()
-        }, os.path.join(os.path.dirname(self.dis_weights_path),self.name+'_%d_dis.pth'%epoch))
+        }, os.path.join(os.path.dirname(self.dis_weights_path),self.name+'_%d_dis.pth'%(epoch-1)))
 
 
 class EdgeModel(BaseModel):
@@ -174,25 +174,25 @@ class InpaintingModel(BaseModel):
         super(InpaintingModel, self).__init__('InpaintingModel', config)
 
         # generator input: [rgb(3) + edge(1)+mask(1)]
-        # discriminator input: [rgb(3)+mask(1)]
+        # discriminator input: [rgb(3)]
         generator = InpaintGeneratorGated()
         # generator = InpaintGenerator()
-        discriminator = Discriminator(in_channels=4, use_sigmoid=config.GAN_LOSS != 'hinge')
+        discriminator = Discriminator(in_channels=3, use_sigmoid=config.GAN_LOSS != 'hinge')
         if len(config.GPU) > 1:
             generator = nn.DataParallel(generator, config.GPU)
             discriminator = nn.DataParallel(discriminator, config.GPU)
 
         l1_loss = nn.L1Loss()
-        # perceptual_loss = PerceptualLoss()
-        # style_loss = StyleLoss()
+        perceptual_loss = PerceptualLoss()
+        style_loss = StyleLoss()
         adversarial_loss = AdversarialLoss(type=config.GAN_LOSS)
 
         self.add_module('generator', generator)
         self.add_module('discriminator', discriminator)
 
         self.add_module('l1_loss', l1_loss)
-        # self.add_module('perceptual_loss', perceptual_loss)
-        # self.add_module('style_loss', style_loss)
+        self.add_module('perceptual_loss', perceptual_loss)
+        self.add_module('style_loss', style_loss)
         self.add_module('adversarial_loss', adversarial_loss)
 
         self.gen_optimizer = optim.Adam(
@@ -220,10 +220,10 @@ class InpaintingModel(BaseModel):
         dis_loss = 0
 
         # discriminator loss
-        # dis_input_real = images
-        dis_input_real =torch.cat((images, masks), dim=1)
-        # dis_input_fake = outputs.detach()
-        dis_input_fake =torch.cat((outputs.detach(), masks), dim=1)
+        dis_input_real = images
+        # dis_input_real =torch.cat((images, masks), dim=1)
+        dis_input_fake = outputs.detach()
+        # dis_input_fake =torch.cat((outputs.detach(), masks), dim=1)
         dis_real, dis_real_feat = self.discriminator(dis_input_real)  # in: [rgb(3)]
         dis_fake, dis_fake_feat = self.discriminator(dis_input_fake)  # in: [rgb(3)]
 
@@ -232,8 +232,8 @@ class InpaintingModel(BaseModel):
         dis_loss += (dis_real_loss + dis_fake_loss) / 2
 
         # generator adversarial loss
-        # gen_input_fake = outputs
-        gen_input_fake = torch.cat((outputs, masks), dim=1)
+        gen_input_fake = outputs
+        # gen_input_fake = torch.cat((outputs, masks), dim=1)
         gen_fake, gen_fake_feat = self.discriminator(gen_input_fake)  # in: [rgb(3)]
         gen_gan_loss = self.adversarial_loss(gen_fake, True, False) * self.config.INPAINT_ADV_LOSS_WEIGHT
         gen_loss += gen_gan_loss
@@ -250,30 +250,22 @@ class InpaintingModel(BaseModel):
         gen_loss += gen_l1_loss
 
         # # generator perceptual loss
-        # gen_content_loss = self.perceptual_loss(outputs, images)
-        # gen_content_loss = gen_content_loss * self.config.CONTENT_LOSS_WEIGHT
-        # gen_loss += gen_content_loss
+        gen_content_loss = self.perceptual_loss(outputs, images)
+        gen_content_loss = gen_content_loss * self.config.CONTENT_LOSS_WEIGHT
+        gen_loss += gen_content_loss
 
         # # generator style loss
-        # gen_style_loss = self.style_loss(outputs * masks, images * masks)
-        # gen_style_loss = gen_style_loss * self.config.STYLE_LOSS_WEIGHT
-        # gen_loss += gen_style_loss
+        gen_style_loss = self.style_loss(outputs * masks, images * masks)
+        gen_style_loss = gen_style_loss * self.config.STYLE_LOSS_WEIGHT
+        gen_loss += gen_style_loss
 
         # create logs
-        # logs = {
-        #     ("l_d2", dis_loss.item()),
-        #     ("l_g2", gen_gan_loss.item()),
-        #     ("l_l1", gen_l1_loss.item()),
-        #     ("l_per", gen_content_loss.item()),
-        #     ("l_sty", gen_style_loss.item()),
-        # ]
-
         logs = {
             "l_d2": dis_loss.item(),
             "l_g2": gen_gan_loss.item(),
             "l_l1": gen_l1_loss.item(),
-            # "l_per":gen_content_loss.item(),
-            # "l_sty":gen_style_loss.item()
+            "l_per":gen_content_loss.item(),
+            "l_sty":gen_style_loss.item()
         }
 
         return outputs, gen_loss, dis_loss, logs

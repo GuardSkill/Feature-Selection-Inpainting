@@ -6,7 +6,7 @@ import torch
 import argparse
 from shutil import copyfile
 
-from TuneParameters import randomTune
+from tune_parameters import randomTune
 from src.config import Config
 from src.edge_connect import EdgeConnect
 from src.utils import *
@@ -22,7 +22,7 @@ def main(mode=None):
 
     config = load_config(mode)
     # cuda visble devices        # os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(e) for e in config.GPU)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     # init device
     if torch.cuda.is_available():
         config.DEVICE = torch.device("cuda")
@@ -38,7 +38,7 @@ def main(mode=None):
     random.seed(config.SEED)
 
     # tune parameters
-    randomTune(config)
+    # randomTune(config)
 
     # build the model and initialize
     model = EdgeConnect(config)

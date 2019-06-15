@@ -94,12 +94,7 @@ class InpaintGeneratorGated(BaseNetwork):
     def __init__(self, residual_blocks=4, init_weights=True, upsampling_mode='nearest'):
         super(InpaintGeneratorGated, self).__init__()
         self.upsampling_mode = upsampling_mode
-        # self.encoder = nn.Sequential(
-        #     GatedModule(in_channels=4, out_channels=64, kernel_size=7, padding=0),
-        #     GatedModule(in_channels=64, out_channels=128, kernel_size=6,stike=2, padding=2),
-        #     GatedModule(in_channels=128, out_channels=256, kernel_size=4, padding=1, stride=2),
-        #     GatedModule(in_channels=256, out_channels=512, kernel_size=4, padding=1, stride=2)
-        # )
+
         self.enc_1 = CFSModule(in_channels=5, out_channels=64, kernel_size=7, padding=0)
         self.enc_2 = CFSModule(in_channels=64, out_channels=128, kernel_size=5, padding=2, stride=2)
         self.enc_3 = CFSModule(in_channels=128, out_channels=256, kernel_size=3, padding=1, stride=2)
@@ -117,13 +112,6 @@ class InpaintGeneratorGated(BaseNetwork):
         self.dec_2 = CFSModule(in_channels=128 + 64, out_channels=64, kernel_size=3, padding=1, stride=1)
         self.dec_1 = CFSModule(in_channels=64 + 5, out_channels=3, kernel_size=3, padding=1, stride=1,
                                activ=None, instance_norm=False)
-        # self.decoder = nn.Sequential(
-        #     DeConvGatedModule(scale_factor=2,in_channels=512, out_channels=256, kernel_size=4, padding=1, stride=2),
-        #     DeConvGatedModule(scale_factor=2, in_channels=256, out_channels=128, kernel_size=4, padding=1, stride=2),
-        #     DeConvGatedModule(scale_factor=2, in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2),
-        #     DeConvGatedModule(scale_factor=2, in_channels=64, out_channels=3, kernel_size=4, padding=1, stride=2,
-        #                       activ=None,instance_norm=False)
-        # )
 
         if init_weights:
             self.init_weights(init_type='kaiming')

@@ -131,7 +131,7 @@ class EdgeConnect():
                 elif model == 2:
                     # train
                     outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, edges, masks)
-                    outputs_merged = (outputs * (1 - masks)) + (images * (masks))
+                    outputs_merged = (outputs * (masks)) + (images * (1 - masks))
 
                     # metrics
                     psnr = self.psnr(self.postprocess(images), self.postprocess(outputs_merged))
@@ -152,12 +152,12 @@ class EdgeConnect():
                     # train
                     if True or np.random.binomial(1, 0.5) > 0:
                         edge_outputs = self.edge_model(images_gray, edges, masks).detach()
-                        edge_outputs = (edge_outputs * (1 - masks)) + (edges * (masks))
+                        edge_outputs = (edge_outputs * (masks)) + (edges * (1 - masks))
                     else:
                         edge_outputs = edges
 
                     outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, edge_outputs.detach(), masks)
-                    outputs_merged = (outputs * (1 - masks)) + (images * (masks))
+                    outputs_merged = (outputs * (masks)) + (images * (1 - masks))
 
                     # metrics
                     psnr = self.psnr(self.postprocess(images), self.postprocess(outputs_merged))
@@ -216,7 +216,7 @@ class EdgeConnect():
                         self.logger.scalar_summary(tag, value/step_per_epoch, epoch)
 
                     # max epoch
-                    if epoch > max_epoches:
+                    if epoch >= max_epoches:
                         keep_training = False
                         break
 
@@ -274,7 +274,7 @@ class EdgeConnect():
                 elif model == 2:
                     # eval
                     outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, edges, masks)
-                    outputs_merged = (outputs * (1 - masks)) + (images * (masks))
+                    outputs_merged = (outputs * (masks)) + (images * (1 - masks))
 
                     # metrics
                     psnr = self.psnr(self.postprocess(images), self.postprocess(outputs_merged))
@@ -286,11 +286,11 @@ class EdgeConnect():
                 # inpaint with edge model
                 elif model == 3:
                     # eval
-                    outputs = self.edge_model(images_gray, edges, masks)
-                    outputs = outputs * masks + edges * (1 - masks)
+                    edge_outputs = self.edge_model(images_gray, edges, masks)
+                    edge_outputs = edge_outputs * (masks) + edges * (1-masks)
 
-                    outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, outputs.detach(), masks)
-                    outputs_merged = (outputs * (1 - masks)) + (images * masks)
+                    outputs, gen_loss, dis_loss, logs = self.inpaint_model.process(images, edge_outputs.detach(), masks)
+                    outputs_merged = (outputs * (masks)) + (images * (1-masks))
 
                     # metrics
                     psnr = self.psnr(self.postprocess(images), self.postprocess(outputs_merged))

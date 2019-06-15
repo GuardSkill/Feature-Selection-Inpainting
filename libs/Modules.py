@@ -273,7 +273,7 @@ class CFSModule(nn.Module):
             h = self.activation(x) * mask
             h = self.sqex(h)
         else:
-            h = x * mask  # no activation and no SE (last layer)
+            h = x * mask            # no activation and no SE in last layer
         if hasattr(self, 'bn'):
             h = self.bn(h)
         return h
