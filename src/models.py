@@ -13,7 +13,7 @@ class BaseModel(nn.Module):
         self.name = name
         self.config = config
         self.iteration = 0
-
+        self.epoch = None
         self.gen_weights_path = os.path.join(config.PATH, name + '_gen.pth')
         self.dis_weights_path = os.path.join(config.PATH, name + '_dis.pth')
 
@@ -28,6 +28,7 @@ class BaseModel(nn.Module):
 
             self.generator.load_state_dict(data['generator'])
             self.iteration = data['iteration']
+            self.epoch=data['epoch']
 
         # load discriminator only when training
         if self.config.MODE == 1 and os.path.exists(self.dis_weights_path):
@@ -40,16 +41,17 @@ class BaseModel(nn.Module):
 
             self.discriminator.load_state_dict(data['discriminator'])
 
-    def save(self,epoch):
+    def save(self, epoch):
         print('\nsaving %s...\n' % self.name)
         torch.save({
             'iteration': self.iteration,
-            'generator': self.generator.state_dict()
-        }, os.path.join(os.path.dirname(self.gen_weights_path),self.name+'_%d_gen.pth'%(epoch-1)))
+            'generator': self.generator.state_dict(),
+            'epoch':epoch
+        }, os.path.join(os.path.dirname(self.gen_weights_path), self.name + '_%d_gen.pth' % (epoch)))
 
         torch.save({
             'discriminator': self.discriminator.state_dict()
-        }, os.path.join(os.path.dirname(self.dis_weights_path),self.name+'_%d_dis.pth'%(epoch-1)))
+        }, os.path.join(os.path.dirname(self.dis_weights_path), self.name + '_%d_dis.pth' % (epoch)))
 
 
 class EdgeModel(BaseModel):
@@ -58,7 +60,6 @@ class EdgeModel(BaseModel):
 
         # generator input: [grayscale(1) + edge(1) + mask(1)]
         # discriminator input: (grayscale(1) + edge(1))
-        # generator = EdgeGenerator(use_spectral_norm=True)
         generator = EdgeGeneratorUnet()
         discriminator = Discriminator(in_channels=2, use_sigmoid=config.GAN_LOSS != 'hinge')
         if len(config.GPU) > 1:
@@ -105,7 +106,6 @@ class EdgeModel(BaseModel):
         self.gen_optimizer.zero_grad()
         self.dis_optimizer.zero_grad()
 
-
         # process outpus
         outputs = self(images, edges, masks)
         gen_loss = 0
@@ -133,12 +133,6 @@ class EdgeModel(BaseModel):
         gen_fm_loss = gen_fm_loss * self.config.FM_LOSS_WEIGHT
         gen_loss += gen_fm_loss
 
-        # create logs
-        # logs = [
-        #     ("l_d1", dis_loss.item()),
-        #     ("l_g1", gen_gan_loss.item()),
-        #     ("l_fm", gen_fm_loss.item()),
-        # ]
         logs = {
             "l_d1": dis_loss.item(),
             "l_g1": gen_gan_loss.item(),
@@ -150,12 +144,12 @@ class EdgeModel(BaseModel):
         # edges_masked = (edges * (1 - masks))
         # images_masked = (images * (1 - masks)) + masks
         edges_masked = (edges * masks)
-        images_masked = (images * masks) +(1-masks)
+        images_masked = (images * masks)
         masks = masks.repeat(1, 2, 1, 1)
-        # inputs = torch.cat((images_masked, edges_masked, masks), dim=1)
+
         inputs = torch.cat((images_masked, edges_masked), dim=1)
         # outputs = self.generator(inputs)  # in: [grayscale(1) + edge(1) + mask(1)]
-        outputs = self.generator(inputs,masks)
+        outputs = self.generator(inputs, masks)
         outputs = self.output_align(inputs, outputs)
         return outputs
 
@@ -246,7 +240,7 @@ class InpaintingModel(BaseModel):
         gen_loss += gen_fm_loss
 
         # generator l1 loss
-        gen_l1_loss = self.l1_loss(outputs, images) * self.config.L1_LOSS_WEIGHT / torch.mean(masks)
+        gen_l1_loss = self.l1_loss(outputs, images) * self.config.L1_LOSS_WEIGHT / torch.mean(1 - masks)
         gen_loss += gen_l1_loss
 
         # # generator perceptual loss
@@ -255,7 +249,7 @@ class InpaintingModel(BaseModel):
         gen_loss += gen_content_loss
 
         # # generator style loss
-        gen_style_loss = self.style_loss(outputs * masks, images * masks)
+        gen_style_loss = self.style_loss(outputs, images)
         gen_style_loss = gen_style_loss * self.config.STYLE_LOSS_WEIGHT
         gen_loss += gen_style_loss
 
@@ -264,8 +258,9 @@ class InpaintingModel(BaseModel):
             "l_d2": dis_loss.item(),
             "l_g2": gen_gan_loss.item(),
             "l_l1": gen_l1_loss.item(),
-            "l_per":gen_content_loss.item(),
-            "l_sty":gen_style_loss.item()
+            "l_fm": gen_fm_loss.item(),
+            "l_per": gen_content_loss.item(),
+            "l_sty": gen_style_loss.item()
         }
 
         return outputs, gen_loss, dis_loss, logs
@@ -273,7 +268,7 @@ class InpaintingModel(BaseModel):
     def forward(self, images, edges, masks):
         # images_masked = (images * (1 - masks).float()) + masks
         images_masked = (images * (masks).float())
-        inputs = torch.cat((images_masked, edges,masks), dim=1)
+        inputs = torch.cat((images_masked, edges, masks), dim=1)
         outputs = self.generator(inputs)  # in: [rgb(3) + edge(1)]
         return outputs
 

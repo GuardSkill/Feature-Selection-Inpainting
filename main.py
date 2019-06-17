@@ -22,7 +22,7 @@ def main(mode=None):
 
     config = load_config(mode)
     # cuda visble devices        # os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(e) for e in config.GPU)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     # init device
     if torch.cuda.is_available():
         config.DEVICE = torch.device("cuda")
@@ -59,7 +59,7 @@ def main(mode=None):
     # eval mode
     else:
         print('\nstart eval...\n')
-        model.eval()
+        model.eval(0)
 
 
 def load_config(mode=None):
