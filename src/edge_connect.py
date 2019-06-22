@@ -156,8 +156,8 @@ class EdgeConnect():
                 elif model == 3:
                     # train
                     if True or np.random.binomial(1, 0.5) > 0:
-                        edge_outputs = self.edge_model(images_gray, edges, masks).detach()
-                        edge_outputs = (edge_outputs * (1-masks)) + (edges * (masks))
+                        edge_outputs = self.edge_model(images, edges, masks).detach()
+                        # edge_outputs = (edge_outputs * (1-masks)) + (edges * (masks))
                     else:
                         edge_outputs = edges
 
@@ -181,7 +181,7 @@ class EdgeConnect():
                 # joint model
                 else:
                     # train
-                    e_outputs, e_gen_loss, e_dis_loss, e_logs = self.edge_model.process(images_gray, edges, masks)
+                    e_outputs, e_gen_loss, e_dis_loss, e_logs = self.edge_model.process(images, edges, masks)
                     e_outputs = e_outputs * (1-masks) + edges * (masks)
                     i_outputs, i_gen_loss, i_dis_loss, i_logs = self.inpaint_model.process(images, e_outputs, masks)
                     outputs_merged = (i_outputs * (1-masks)) + (images * (masks))
@@ -292,8 +292,8 @@ class EdgeConnect():
                 # inpaint with edge model
                 elif model == 3:
                     # eval
-                    edge_outputs = self.edge_model(images_gray, edges, masks)
-                    edge_outputs = edge_outputs * (1-masks) + edges * (masks)
+                    edge_outputs = self.edge_model(images, edges, masks)
+                    # edge_outputs = edge_outputs * (1-masks) + edges * (masks)
 
                     outputs, gen_loss, dis_loss, log_origin = self.inpaint_model.process(images, edge_outputs.detach(), masks)
                     outputs_merged = (outputs * (1-masks)) + (images * (masks))
@@ -319,7 +319,7 @@ class EdgeConnect():
                 # joint model
                 else:
                     # eval
-                    e_outputs, e_gen_loss, e_dis_loss, e_logs = self.edge_model.process(images_gray, edges, masks)
+                    e_outputs, e_gen_loss, e_dis_loss, e_logs = self.edge_model.process(images, edges, masks)
                     e_outputs = e_outputs * (1 - masks) + edges * masks
                     i_outputs, i_gen_loss, i_dis_loss, i_logs = self.inpaint_model.process(images, e_outputs, masks)
                     outputs_merged = (i_outputs * (1 - masks)) + (images * masks)
@@ -445,7 +445,7 @@ class EdgeConnect():
             else:
                 iteration = self.inpaint_model.iteration
                 inputs = (images * (masks)) + (1 - masks)
-                outputs = self.edge_model(images_gray, edges, masks).detach()
+                outputs = self.edge_model(images, edges, masks).detach()
                 edges = (outputs * (1 - masks) + edges * (masks)).detach()
                 outputs = self.inpaint_model(images, edges, masks)
                 outputs_merged = (outputs * (1 - masks)) + (images * (masks))
