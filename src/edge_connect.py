@@ -118,7 +118,7 @@ class EdgeConnect():
                 # edge model
                 if model == 1:
                     # train
-                    outputs, gen_loss, dis_loss, logs = self.edge_model.process(images_gray, edges, masks)
+                    outputs, gen_loss, dis_loss, logs = self.edge_model.process(images, edges, masks)
 
                     # metrics
                     precision, recall = self.edgeacc(edges * (1-masks), outputs * (1-masks))
@@ -264,12 +264,13 @@ class EdgeConnect():
                 # edge model
                 if model == 1:
                     # eval
-                    outputs, gen_loss, dis_loss, _ = self.edge_model.process(images_gray, edges, masks)
+                    outputs, gen_loss, dis_loss, _ = self.edge_model.process(images, edges, masks)
                     logs = {}
                     logs['l_val_d1'] = dis_loss.item()
                     logs['l_val_g1'] = gen_loss.item()
                     # metrics
-                    precision, recall = self.edgeacc(edges * (1-masks), outputs * (1-masks))
+                    # precision, recall = self.edgeacc(edges * (1-masks), outputs * (1-masks))
+                    precision, recall = self.edgeacc(edges * (1 - masks), outputs * (1 - masks))
                     logs['val_precision'] = precision.item()
                     logs['val_recall'] = recall.item()
 
@@ -427,9 +428,11 @@ class EdgeConnect():
             # edge model
             if model == 1:
                 iteration = self.edge_model.iteration
-                inputs = (images_gray * masks) + (1 - masks)
-                outputs = self.edge_model(images_gray, edges, masks).detach()
-                outputs_merged = (outputs * (1 - masks)) + (edges * masks)
+                # inputs = (images_gray * masks) + (1 - masks)
+                inputs=(images * masks) + (1 - masks)
+                outputs = self.edge_model(inputs,edges, masks).detach()
+                outputs_merged=outputs
+                # outputs_merged = (outputs * (1 - masks)) + (edges * masks)
 
             # inpaint model
             elif model == 2:

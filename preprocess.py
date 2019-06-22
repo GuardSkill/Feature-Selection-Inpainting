@@ -45,15 +45,21 @@ def inpaint_nans(img):
 for i in range(N_mini):
     img = cv2.imread(img_paths[i])
     mask = cv2.imread(mask_paths[i])
-    # if img.shape[2]==3:
-    #     m=cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-    # dst = cv2.inpaint(img, m, 3, cv2.INPAINT_TELEA)
+    if img.shape[2]==3:
+        m=cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    dst = cv2.inpaint(img, m, 3, cv2.INPAINT_TELEA)
     img[mask != 0] = 0
+    #
+    # img = cv2.imread("/home/user/Downloads/lena.png")
+    # blurred_img = cv2.GaussianBlur(img, (21, 21), 0)
+    # mask = np.zeros((512, 512, 3), dtype=np.uint8)
+    # mask = cv2.circle(mask, (258, 258), 100, np.array([255, 255, 255]), -1)
+    # out = np.where(mask == np.array([255, 255, 255]), img, blurred_img)
+    # cv2.imwrite("./out.png", out)
 
-    inpaint_nans(img)
+    # inpaint_nans(img)
     cv2.imshow('inpaint_first', img)
-
-    cv2.imshow('inpaint_first', dst)
+    cv2.imshow('inpainted', dst)
     dst = cv2.medianBlur(dst, 5)
     cv2.imshow('median', dst)
     dst = dst * mask + (255 - mask) * img

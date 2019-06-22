@@ -60,8 +60,8 @@ class EdgeModel(BaseModel):
 
         # generator input: [grayscale(1) + edge(1) + mask(1)]
         # discriminator input: (grayscale(1) + edge(1))
-        generator = EdgeGeneratorUnet()
-        discriminator = Discriminator(in_channels=2, use_sigmoid=config.GAN_LOSS != 'hinge')
+        generator = EdgeGeneratorUnet(input_channels=3)
+        discriminator = Discriminator(in_channels=4, use_sigmoid=config.GAN_LOSS != 'hinge')
         if len(config.GPU) > 1:
             generator = nn.DataParallel(generator, config.GPU)
             discriminator = nn.DataParallel(discriminator, config.GPU)
@@ -145,9 +145,10 @@ class EdgeModel(BaseModel):
         # images_masked = (images * (1 - masks)) + masks
         edges_masked = (edges * masks)
         images_masked = (images * masks)
-        masks = masks.repeat(1, 2, 1, 1)
+        masks = masks.repeat(1, 3, 1, 1)
 
-        inputs = torch.cat((images_masked, edges_masked), dim=1)
+        # inputs = torch.cat((images_masked, edges_masked), dim=1)
+        inputs=images_masked
         # outputs = self.generator(inputs)  # in: [grayscale(1) + edge(1) + mask(1)]
         outputs = self.generator(inputs, masks)
         outputs = self.output_align(inputs, outputs)
