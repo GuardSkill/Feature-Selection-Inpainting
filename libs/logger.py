@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import scipy.misc
-from io import BytesIO  # Python 3.x
+from io import BytesIO, StringIO  # Python 3.x
 
 
 class Logger(object):

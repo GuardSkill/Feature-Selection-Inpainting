@@ -13,8 +13,9 @@ from skimage.color import rgb2gray, gray2rgb
 from .utils import create_mask
 import torch.utils.data.sampler
 
+
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, config, flist, edge_flist, mask_flist, augment=True, training=True,sample_interval=1):
+    def __init__(self, config, flist, edge_flist, mask_flist, augment=True, training=True, sample_interval=1):
         super(Dataset, self).__init__()
         self.augment = augment
         self.training = training
@@ -28,10 +29,10 @@ class Dataset(torch.utils.data.Dataset):
         self.mask = config.MASK
         self.nms = config.NMS
 
-        # in test mode, there's a one-to-one relationship between mask and image
+        # in somne test mode, there's a one-to-one relationship between mask and image
         # masks are loaded non random
-        if config.MODE == 2:
-            self.mask = 6
+        # if config.MODE == 2:
+        #     self.mask = 6
 
     def __len__(self):
         return len(self.data)
@@ -74,12 +75,15 @@ class Dataset(torch.utils.data.Dataset):
         edge = self.load_edge(img_gray, index, mask)
 
         # augment data
+        # flap
         if self.augment and np.random.binomial(1, 0.5) > 0:
             img = img[:, ::-1, ...]
             img_gray = img_gray[:, ::-1, ...]
             edge = edge[:, ::-1, ...]
             mask = mask[:, ::-1, ...]
-
+        # rotate mask
+        rotation_rand=np.random.randint(4, size=None)
+        mask=np.rot90(mask,rotation_rand,axes=(0,1))
         return self.to_tensor(img), self.to_tensor(img_gray), self.to_tensor(edge), self.to_tensor(mask)
 
     def load_edge(self, img, index, mask):
@@ -139,7 +143,7 @@ class Dataset(torch.utils.data.Dataset):
             mask_index = random.randint(0, len(self.mask_data) - 1)
             mask = imread(self.mask_data[mask_index])
             mask = self.resize(mask, imgh, imgw)
-            mask = (mask > 0).astype(np.uint8) * 255       # threshold due to interpolation
+            mask = (mask > 0).astype(np.uint8) * 255  # threshold due to interpolation
             return mask
 
         # test mode: load mask non random

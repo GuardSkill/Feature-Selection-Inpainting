@@ -27,8 +27,9 @@ class BaseModel(nn.Module):
                 data = torch.load(self.gen_weights_path, map_location=lambda storage, loc: storage)
 
             self.generator.load_state_dict(data['generator'])
-            self.iteration = data['iteration']
-            self.epoch=data['epoch']
+            # self.iteration = data['iteration']
+            if self.config.LOADWITHEPOCH == 1:
+                self.epoch = data['epoch']
 
         # load discriminator only when training
         if self.config.MODE == 1 and os.path.exists(self.dis_weights_path):
@@ -44,9 +45,9 @@ class BaseModel(nn.Module):
     def save(self, epoch):
         print('\nsaving %s...\n' % self.name)
         torch.save({
-            'iteration': self.iteration,
+            # 'iteration': self.iteration,
             'generator': self.generator.state_dict(),
-            'epoch':epoch
+            'epoch': epoch
         }, os.path.join(os.path.dirname(self.gen_weights_path), self.name + '_%d_gen.pth' % (epoch)))
 
         torch.save({

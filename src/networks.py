@@ -220,7 +220,7 @@ class EdgeGeneratorUnet(BaseNetwork):
 
 
 class EdgeGenerator(BaseNetwork):
-    def __init__(self, residual_blocks=8, use_spectral_norm=True, init_weights=True):
+    def __init__(self, residual_blocks=4, use_spectral_norm=True, init_weights=True):
         super(EdgeGenerator, self).__init__()
 
         self.encoder = nn.Sequential(
@@ -324,7 +324,7 @@ class Discriminator(BaseNetwork):
         return outputs, [conv1, conv2, conv3, conv4, conv5]
 
 
-class DiscriminatorPatchFM(BaseNetwork):
+class DiscriminatorEnhanced(BaseNetwork):
     def __init__(self, in_channels, use_sigmoid=True, use_spectral_norm=True, init_weights=True):
         super(Discriminator, self).__init__()
         self.use_sigmoid = use_sigmoid
@@ -371,12 +371,12 @@ class DiscriminatorPatchFM(BaseNetwork):
         conv3 = self.conv3(conv2)
         conv4 = self.conv4(conv3)
         conv5 = self.conv5(conv4)
-
-        outputs = conv5
+        conv6=self.conv6(conv5)
+        outputs = conv6
         if self.use_sigmoid:
             outputs = torch.sigmoid(conv5)
 
-        return outputs, [conv1, conv2, conv3, conv4, conv5]
+        return outputs, [conv1, conv2, conv3, conv4, conv5,conv6]
 
 
 class ResnetBlock(nn.Module):

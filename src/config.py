@@ -55,6 +55,7 @@ DEFAULT_CONFIG = {
     'MAX_ITERS': 2e6,  # maximum number of iterations to train the model
     'MAX_STEPS': 5000,
     'MAX_EPOCHES': 40,
+    'LOADWITHEPOCH':0,
 
     'EDGE_THRESHOLD': 0.5,  # edge detection threshold
     'L1_LOSS_WEIGHT': 1,  # l1 loss weight
