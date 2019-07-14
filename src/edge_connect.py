@@ -362,6 +362,8 @@ class EdgeConnect():
         create_dir(inpainted_dir)
         damaged_edge_dir=os.path.join(self.results_path, "damaged_edge")
         create_dir(damaged_edge_dir)
+        raw_dir = os.path.join(self.results_path, "raw")
+        create_dir(raw_dir)
 
         model = self.config.MODEL
         create_dir(self.results_path)
@@ -390,8 +392,11 @@ class EdgeConnect():
                 damaged_img = self.postprocess(edges * masks + (1 - masks))[0]
                 imsave(damaged_img, path)
                 path = os.path.join(mask_dir, name)
+                imsave(self.postprocess(masks),os.path.splitext(path)[0]+ '.png')
+                path = os.path.join(raw_dir, name)
+                img = self.postprocess(images)[0]
+                imsave(img, path)
                 # print(index, name)
-                imsave(self.postprocess(masks), path)[0]
 
                 index += 1
                 if index > total / batch_size / sample_interval:
@@ -476,16 +481,17 @@ class EdgeConnect():
                 iteration = self.inpaint_model.iteration
                 inputs = (images * masks) + (1 - masks)
                 outputs = self.inpaint_model(images, edges, masks).detach()
-                outputs_merged = (outputs * (1 - masks)) + (images * (masks))
+                # outputs_merged = (outputs * (1 - masks)) + (images * (masks))
 
             # inpaint with edge model / joint model
             else:
                 iteration = self.inpaint_model.iteration
                 inputs = (images * (masks)) + (1 - masks)
                 outputs = self.edge_model(images_gray, edges, masks).detach()
-                edges = (outputs * (1 - masks) + edges * (masks)).detach()
-                outputs = self.inpaint_model(images, edges, masks)
-                outputs_merged = (outputs * (1 - masks)) + (images * (masks))
+                edge_merged = (outputs * (1 - masks) + edges * (masks)).detach()
+                edges = self.color_the_edge(outputs, edges, masks).detach()
+                outputs = self.inpaint_model(images, edge_merged, masks)
+                # outputs_merged = (outputs * (1 - masks)) + (images * (masks))
 
             if it is not None:
                 iteration = it

@@ -31,8 +31,8 @@ class Dataset(torch.utils.data.Dataset):
 
         # in somne test mode, there's a one-to-one relationship between mask and image
         # masks are loaded non random
-        # if config.MODE == 2:
-        #     self.mask = 6
+        if config.MODE == 2:
+            self.mask = 6
 
     def __len__(self):
         return len(self.data)
@@ -82,8 +82,9 @@ class Dataset(torch.utils.data.Dataset):
             edge = edge[:, ::-1, ...]
             mask = mask[:, ::-1, ...]
         # rotate mask
-        rotation_rand=np.random.randint(4, size=None)
-        mask=np.rot90(mask,rotation_rand,axes=(0,1))
+        if self.augment:
+            rotation_rand=np.random.randint(4, size=None)
+            mask=np.rot90(mask,rotation_rand,axes=(0,1))
         return self.to_tensor(img), self.to_tensor(img_gray), self.to_tensor(edge), self.to_tensor(mask)
 
     def load_edge(self, img, index, mask):
